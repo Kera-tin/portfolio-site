@@ -1,92 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Contact | Vincent Kwao</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css" />
   <style>
-    .status-message {
-      margin-top: 1rem;
-      font-weight: 500;
-      text-align: center;
-    }
-    .status-success {
-      color: green;
-    }
-    .status-error {
-      color: red;
-    }
+    .status-message { margin-top: 1rem; font-weight: 500; text-align: center; }
+    .status-success { color: #1a7f37; }
+    .status-error { color: #b00020; }
+    .btn[disabled] { opacity: .6; cursor: not-allowed; }
   </style>
 </head>
 <body>
-  <header>
-    <nav class="navbar">
-      <div class="logo">Vincent Kwao</div>
-      <ul class="nav-links">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="portfolio.html">Portfolio</a></li>
-        <li><a href="projects.html">Projects</a></li>
-        <li><a href="gallery.html">Gallery</a></li>
-        <li><a href="contact.html" class="active">Contact</a></li>
-      </ul>
-    </nav>
-  </header>
+<header>
+  <nav class="navbar">
+    <div class="logo">Vincent Kwao</div>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="portfolio.html">Portfolio</a></li>
+      <li><a href="projects.html">Projects</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
+      <li><a href="contact.html" class="active">Contact</a></li>
+    </ul>
+  </nav>
+</header>
 
-  <section class="contact-section">
-    <h2>Get in Touch</h2>
-    <form id="contact-form">
-      <input type="text" name="name" id="name" placeholder="Your Name" required>
-      <input type="email" name="email" id="email" placeholder="Your Email" required>
-      <textarea name="message" id="message" placeholder="Your Message" rows="5" required></textarea>
-      <button type="submit" class="btn">Send Message</button>
-    </form>
-    <p id="form-status" class="status-message"></p>
-  </section>
+<section class="contact-section">
+  <h2>Get in Touch</h2>
 
-  <footer>
-    <p>&copy; 2025 Vincent Kwao.</p>
-  </footer>
+  <!-- No action/method: JS handles submission -->
+  <form id="contact-form">
+    <input type="text" name="name" id="name" placeholder="Your Name" required />
+    <input type="email" name="email" id="email" placeholder="Your Email" required />
+    <textarea name="message" id="message" placeholder="Your Message" rows="5" required></textarea>
+    <button type="submit" class="btn" id="submit-btn">Send Message</button>
+  </form>
 
-  <script>
-    // Replace this with your actual Google Apps Script URL
-    const scriptURL = 'https://script.google.com/macros/s/AKfycby6Msp1LST7y0Fl-sG2mvMotW3J-qwRjRfbBglkSEZR8Xf7LVQiPwaI4ONvQ_JCIxXI/exec';
+  <p id="form-status" class="status-message"></p>
+</section>
 
-    const form = document.getElementById('contact-form');
-    const statusMessage = document.getElementById('form-status');
+<footer>
+  <p>&copy; 2025 Vincent Kwao.</p>
+</footer>
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      statusMessage.textContent = 'Sending...';
-      statusMessage.className = 'status-message';
+<script>
+  // 🔁 Replace with your deployed Apps Script Web App URL (ends with /exec)
+  const scriptURL = 'https://script.google.com/macros/s/YOUR-APP-SCRIPT-URL/exec';
 
-      const data = {
-        name: document.getElementById('name').value.trim(),
-        email: document.getElementById('email').value.trim(),
-        message: document.getElementById('message').value.trim(),
-      };
+  const form = document.getElementById('contact-form');
+  const statusEl = document.getElementById('form-status');
+  const submitBtn = document.getElementById('submit-btn');
 
-      try {
-        const response = await fetch(scriptURL, {
-          method: 'POST',
-          body: JSON.stringify(data),
-          headers: { 'Content-Type': 'application/json' },
-        });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault(); // stop default POST to GitHub Pages (prevents 405)
 
-        if (response.ok) {
-          const result = await response.json();
-          statusMessage.textContent = '✅ Message sent successfully!';
-          statusMessage.classList.add('status-success');
+    // Basic front-end validation
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const message = document.getElementById('message').value.trim();
+
+    if (!name || !email || !message) {
+      statusEl.textContent = 'Please fill in all fields.';
+      statusEl.className = 'status-message status-error';
+      return;
+    }
+
+    // UI: loading state
+    submitBtn.disabled = true;
+    statusEl.textContent = 'Sending...';
+    statusEl.className = 'status-message';
+
+    const payload = { name, email, message };
+
+    try {
+      // Use text/plain to avoid CORS preflight; Apps Script reads e.postData.contents
+      const res = await fetch(scriptURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+
+      // Many Apps Script setups won’t set CORS headers; keep it simple:
+      if (res.ok) {
+        // Try to parse JSON; if it fails, still show success (Apps Script may return plain text)
+        let ok = true;
+        try {
+          const json = await res.json();
+          ok = json && (json.status === 'success' || res.status === 200);
+        } catch (_) { /* ignore parse errors */ }
+
+        if (ok) {
+          statusEl.textContent = '✅ Message sent successfully!';
+          statusEl.className = 'status-message status-success';
           form.reset();
         } else {
-          throw new Error('Network response was not ok');
+          throw new Error('Unexpected response');
         }
-      } catch (error) {
-        console.error('Error:', error);
-        statusMessage.textContent = '❌ Failed to send message. Please try again later.';
-        statusMessage.classList.add('status-error');
+      } else {
+        throw new Error('Network response not ok: ' + res.status);
       }
-    });
-  </script>
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = '❌ Failed to send message. Please try again later.';
+      statusEl.className = 'status-message status-error';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
 </body>
 </html>
