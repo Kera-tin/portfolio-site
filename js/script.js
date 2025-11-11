@@ -9,12 +9,4 @@ behavior: 'smooth'
 }
 
 
-// Simple alert on form submit
-const form = document.getElementById('contact-form');
-if (form) {
-form.addEventListener('submit', (e) => {
-e.preventDefault();
-alert('Your message has been submitted! Thank you.');
-form.reset();
-});
-}
+
